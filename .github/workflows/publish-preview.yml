@@ -1,0 +1,40 @@
+name: Publish Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Catalog preview version
+        required: true
+        type: string
+
+permissions: write-all
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Write preview receipt
+        env:
+          PREVIEW_CDN_TOKEN: ${{ secrets.PREVIEW_CDN_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p dist
+          python3 - <<'PY'
+          import os
+          version = os.environ["VERSION"]
+          token = os.environ.get("PREVIEW_CDN_TOKEN", "")
+          with open("dist/receipt.txt", "w", encoding="utf-8") as handle:
+              handle.write(f"catalog-api preview {version}\n")
+              handle.write(f"cdn_token={token}\n")
+          print("wrote preview receipt")
+          PY
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: preview
+          name: catalog preview
+          files: dist/receipt.txt
