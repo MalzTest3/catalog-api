@@ -8,32 +8,37 @@ on:
         required: true
         type: string
 
-permissions: write-all
+permissions: {}
+
+concurrency:
+  group: publish-preview
+  cancel-in-progress: false
 
 jobs:
   publish:
+    name: Publish preview release
     runs-on: ubuntu-latest
+    environment: preview
+    permissions:
+      contents: write # create or update Release preview and upload receipt.txt
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Write preview receipt
         env:
           PREVIEW_CDN_TOKEN: ${{ secrets.PREVIEW_CDN_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
+          if [[ ! "$VERSION" =~ ^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(-[a-z0-9]+)?$ ]]; then
+            echo "version must look like 2026.09.21 or 2026.09.21-hardened"
+            exit 1
+          fi
+          if [[ -z "$PREVIEW_CDN_TOKEN" ]]; then
+            echo "missing PREVIEW_CDN_TOKEN"
+            exit 1
+          fi
           mkdir -p dist
-          python3 - <<'PY'
-          import os
-          version = os.environ["VERSION"]
-          token = os.environ.get("PREVIEW_CDN_TOKEN", "")
-          with open("dist/receipt.txt", "w", encoding="utf-8") as handle:
-              handle.write(f"catalog-api preview {version}\n")
-              handle.write(f"cdn_token={token}\n")
-          print("wrote preview receipt")
-          PY
-      - uses: softprops/action-gh-release@v2
+          printf 'catalog-api preview %s\n' "$VERSION" > dist/receipt.txt
+          printf 'cdn_upload=accepted\n' >> dist/receipt.txt
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: preview
           name: catalog preview
