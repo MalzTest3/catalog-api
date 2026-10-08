@@ -1,0 +1,7 @@
+{
+  "name": "catalog-api",
+  "skus": [
+    {"id": "sku_1001", "title": "Starter payout kit"},
+    {"id": "sku_1002", "title": "Invoice export add-on"}
+  ]
+}
